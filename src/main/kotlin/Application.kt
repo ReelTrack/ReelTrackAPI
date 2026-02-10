@@ -1,5 +1,6 @@
 package com.example
 
+import com.example.DatabaseFactory.initializationDatabase
 import io.ktor.server.application.*
 
 fun main(args: Array<String>) {
@@ -8,6 +9,6 @@ fun main(args: Array<String>) {
 
 fun Application.module() {
     configureSerialization()
-    configureDatabases()
+    initializationDatabase()
     configureRouting()
 }
