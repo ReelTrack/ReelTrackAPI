@@ -1,4 +1,4 @@
-rootProject.name = "reel_track_api"
+rootProject.name = "ktor-sample"
 
 dependencyResolutionManagement {
     repositories {
