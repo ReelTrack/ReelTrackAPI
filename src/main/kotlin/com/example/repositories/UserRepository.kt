@@ -1,53 +1,12 @@
-package com.example
+package com.example.repositories
 
+import com.example.models.User
+import com.example.models.enums.UserRole
 import kotlinx.coroutines.*
-import kotlinx.serialization.KSerializer
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.descriptors.PrimitiveKind
-import kotlinx.serialization.descriptors.PrimitiveSerialDescriptor
-import kotlinx.serialization.descriptors.SerialDescriptor
-import kotlinx.serialization.encoding.Decoder
-import kotlinx.serialization.encoding.Encoder
 import java.sql.Connection
 import java.sql.Statement
-import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
-object LocalDateTimeSerializer : KSerializer<LocalDateTime> {
-    private val formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME
-
-    override val descriptor: SerialDescriptor = 
-        PrimitiveSerialDescriptor("LocalDateTime", PrimitiveKind.STRING)
-
-    override fun serialize(encoder: Encoder, value: LocalDateTime) {
-        encoder.encodeString(value.format(formatter))
-    }
-
-    override fun deserialize(decoder: Decoder): LocalDateTime {
-        return LocalDateTime.parse(decoder.decodeString(), formatter)
-    }
-}
-
-@Serializable
-enum class UserRole {
-    USER, ADMIN, MODERATOR
-}
-
-@Serializable
-data class User(
-    val id: Int? = null,
-    val username: String,
-    val email: String,
-    val passwordHash: String,
-    val role: UserRole = UserRole.USER,
-    @Serializable(with = LocalDateTimeSerializer::class)
-    val createdAt: LocalDateTime? = null,
-    @Serializable(with = LocalDateTimeSerializer::class)
-    val updatedAt: LocalDateTime? = null,
-    val isBanned: Boolean = false
-)
-
-class UserSchema(private val connection: Connection) {
+class UserRepository(private val connection: Connection) {
     companion object {
         private const val CREATE_TABLE = """
             CREATE TABLE IF NOT EXISTS users (
@@ -67,6 +26,8 @@ class UserSchema(private val connection: Connection) {
         private const val SELECT_USER_BY_EMAIL = "SELECT * FROM users WHERE email = ?"
         private const val UPDATE_USER =
             "UPDATE users SET username = ?, email = ?, role = ?, is_banned = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
+        private const val UPDATE_USER_WITH_PASSWORD =
+            "UPDATE users SET username = ?, email = ?, password_hash = ?, role = ?, is_banned = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
         private const val DELETE_USER = "DELETE FROM users WHERE id = ?"
         private const val SELECT_ALL_USERS = "SELECT * FROM users"
         private const val BAN_USER = "UPDATE users SET is_banned = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?"
@@ -96,7 +57,7 @@ class UserSchema(private val connection: Connection) {
         }
     }
 
-    suspend fun read(id: Int): User? = withContext(Dispatchers.IO) {
+    suspend fun findById(id: Int): User? = withContext(Dispatchers.IO) {
         val statement = connection.prepareStatement(SELECT_USER_BY_ID)
         statement.setInt(1, id)
         val resultSet = statement.executeQuery()
@@ -118,14 +79,25 @@ class UserSchema(private val connection: Connection) {
         return@withContext null
     }
 
-    suspend fun update(id: Int, user: User) = withContext(Dispatchers.IO) {
-        val statement = connection.prepareStatement(UPDATE_USER)
-        statement.setString(1, user.username)
-        statement.setString(2, user.email)
-        statement.setString(3, user.role.name)
-        statement.setBoolean(4, user.isBanned)
-        statement.setInt(5, id)
-        statement.executeUpdate()
+    suspend fun update(id: Int, user: User, passwordHash: String? = null) = withContext(Dispatchers.IO) {
+        if (passwordHash != null) {
+            val statement = connection.prepareStatement(UPDATE_USER_WITH_PASSWORD)
+            statement.setString(1, user.username)
+            statement.setString(2, user.email)
+            statement.setString(3, passwordHash)
+            statement.setString(4, user.role.name)
+            statement.setBoolean(5, user.isBanned)
+            statement.setInt(6, id)
+            statement.executeUpdate()
+        } else {
+            val statement = connection.prepareStatement(UPDATE_USER)
+            statement.setString(1, user.username)
+            statement.setString(2, user.email)
+            statement.setString(3, user.role.name)
+            statement.setBoolean(4, user.isBanned)
+            statement.setInt(5, id)
+            statement.executeUpdate()
+        }
     }
 
     suspend fun delete(id: Int) = withContext(Dispatchers.IO) {
@@ -134,7 +106,7 @@ class UserSchema(private val connection: Connection) {
         statement.executeUpdate()
     }
 
-    suspend fun getAllUsers(): List<User> = withContext(Dispatchers.IO) {
+    suspend fun findAll(): List<User> = withContext(Dispatchers.IO) {
         val statement = connection.createStatement()
         val resultSet = statement.executeQuery(SELECT_ALL_USERS)
 
@@ -145,13 +117,13 @@ class UserSchema(private val connection: Connection) {
         return@withContext users
     }
 
-    suspend fun banUser(id: Int) = withContext(Dispatchers.IO) {
+    suspend fun ban(id: Int) = withContext(Dispatchers.IO) {
         val statement = connection.prepareStatement(BAN_USER)
         statement.setInt(1, id)
         statement.executeUpdate()
     }
 
-    suspend fun unbanUser(id: Int) = withContext(Dispatchers.IO) {
+    suspend fun unban(id: Int) = withContext(Dispatchers.IO) {
         val statement = connection.prepareStatement(UNBAN_USER)
         statement.setInt(1, id)
         statement.executeUpdate()
@@ -163,7 +135,7 @@ class UserSchema(private val connection: Connection) {
             username = resultSet.getString("username"),
             email = resultSet.getString("email"),
             passwordHash = resultSet.getString("password_hash"),
-            role = UserRole.valueOf(resultSet.getString("role")),
+            role = UserRole.fromString(resultSet.getString("role")),
             createdAt = resultSet.getTimestamp("created_at")?.toLocalDateTime(),
             updatedAt = resultSet.getTimestamp("updated_at")?.toLocalDateTime(),
             isBanned = resultSet.getBoolean("is_banned")
