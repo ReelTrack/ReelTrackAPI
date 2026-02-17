@@ -1,6 +1,8 @@
 package com.example.config
 
+import com.example.repositories.TokenRepository
 import com.example.repositories.UserRepository
+import com.example.services.AuthService
 import com.example.services.UserService
 import io.github.cdimascio.dotenv.dotenv
 import io.ktor.server.application.*
@@ -10,10 +12,9 @@ import java.sql.DriverManager
 
 object DatabaseConfig {
 
-    // Загружаем .env файл
     private val env = dotenv {
-        directory = "./" // директория с .env файлом
-        filename = ".env" // имя файла
+        directory = "./"
+        filename = ".env"
         ignoreIfMissing = false // если файл не найден - ошибка
     }
 
@@ -36,10 +37,17 @@ object DatabaseConfig {
             val userRepository = UserRepository(connection)
             userRepository.createTableIfNotExists()
 
+            val tokenRepository = TokenRepository(connection)
+            tokenRepository.createTableIfNotExists()
+
             val userService = UserService(userRepository)
+            val authService = AuthService(userRepository, tokenRepository)
 
             attributes.put(ConnectionKey, connection)
             attributes.put(UserServiceKey, userService)
+            attributes.put(AuthServiceKey, authService)
+
+            environment.log.info("✅ All database tables initialized successfully!")
         } catch (e: Exception) {
             environment.log.error("❌ Failed to connect to database", e)
             throw e
@@ -48,4 +56,5 @@ object DatabaseConfig {
 
     val ConnectionKey = AttributeKey<Connection>("db.connection")
     val UserServiceKey = AttributeKey<UserService>("user.service")
+    val AuthServiceKey = AttributeKey<AuthService>("auth.service")
 }

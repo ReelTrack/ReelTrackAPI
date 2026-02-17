@@ -1,5 +1,6 @@
 package com.example.config
 
+import com.example.controllers.authRoutes
 import com.example.controllers.userRoutes
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -20,5 +21,6 @@ fun Application.configureRouting() {
         }
 
         userRoutes()
+        authRoutes()
     }
 }

@@ -30,4 +30,10 @@ dependencies {
     testImplementation(libs.ktor.server.test.host)
     testImplementation(libs.kotlin.test.junit)
     implementation("io.github.cdimascio:dotenv-kotlin:6.4.1")
+
+    // JWT
+    implementation("com.auth0:java-jwt:4.4.0")
+    implementation("io.ktor:ktor-server-auth:3.4.0")
+    implementation("io.ktor:ktor-server-auth-jwt:3.4.0")
+
 }
