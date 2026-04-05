@@ -48,8 +48,7 @@ object DatabaseConfig {
             val genreRepository   = GenreRepository(connection)
             val personRepository  = PersonRepository(connection)
             val contentRepository = ContentRepository(connection)
-            // ReviewRepository получает ссылку на contentRepository для пересчёта avg_rating
-            val reviewRepository  = ReviewRepository(connection, contentRepository)
+            val reviewRepository  = ReviewRepository(connection)
 
             // Init tables (порядок важен — reviews зависит от users и content)
             userRepository.createTableIfNotExists()

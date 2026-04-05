@@ -5,10 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.sql.Connection
 
-class ReviewRepository(
-    private val connection: Connection,
-    private val contentRepository: ContentRepository
-) {
+class ReviewRepository(private val connection: Connection) {
 
     fun createTableIfNotExists() {
         connection.createStatement().executeUpdate(
@@ -68,10 +65,7 @@ class ReviewRepository(
         stmt.setString(4, review.body)
         stmt.setBoolean(5, review.isSpoiler)
         val rs = stmt.executeQuery()
-        val id = if (rs.next()) rs.getInt("id") else throw Exception("Failed to create review")
-        // Пересчитываем avg_rating для контента
-        contentRepository.recalcAvgRating(review.contentId)
-        id
+        if (rs.next()) rs.getInt("id") else throw Exception("Failed to create review")
     }
 
     suspend fun findById(id: Int): ReviewResponse? = withContext(Dispatchers.IO) {
@@ -106,9 +100,6 @@ class ReviewRepository(
     }
 
     suspend fun update(id: Int, review: Review) = withContext(Dispatchers.IO) {
-        // Получаем contentId до обновления для пересчёта рейтинга
-        val contentId = getContentIdByReviewId(id)
-
         val stmt = connection.prepareStatement(
             """
             UPDATE reviews SET rating = ?, body = ?, is_spoiler = ?, updated_at = CURRENT_TIMESTAMP
@@ -120,27 +111,11 @@ class ReviewRepository(
         stmt.setBoolean(3, review.isSpoiler)
         stmt.setInt(4, id)
         stmt.executeUpdate()
-
-        // Пересчитываем avg_rating
-        if (contentId != null) contentRepository.recalcAvgRating(contentId)
     }
 
     suspend fun delete(id: Int) = withContext(Dispatchers.IO) {
-        val contentId = getContentIdByReviewId(id)
-
         connection.prepareStatement("DELETE FROM reviews WHERE id = ?")
             .also { it.setInt(1, id) }.executeUpdate()
-
-        // Пересчитываем avg_rating
-        if (contentId != null) contentRepository.recalcAvgRating(contentId)
-    }
-
-    // Вспомогательный метод — получить content_id по review id
-    private fun getContentIdByReviewId(reviewId: Int): Int? {
-        val stmt = connection.prepareStatement("SELECT content_id FROM reviews WHERE id = ?")
-        stmt.setInt(1, reviewId)
-        val rs = stmt.executeQuery()
-        return if (rs.next()) rs.getInt("content_id") else null
     }
 
     // ============================================================
@@ -162,7 +137,7 @@ class ReviewRepository(
             del.setInt(1, userId)
             del.setInt(2, reviewId)
             del.executeUpdate()
-            false
+            false // убрал лайк
         } else {
             val ins = connection.prepareStatement(
                 "INSERT INTO review_likes (user_id, review_id) VALUES (?, ?)"
@@ -170,7 +145,7 @@ class ReviewRepository(
             ins.setInt(1, userId)
             ins.setInt(2, reviewId)
             ins.executeUpdate()
-            true
+            true // поставил лайк
         }
     }
 
@@ -288,6 +263,7 @@ class ReviewRepository(
         )
     }
 
+    // Синхронная версия для вызова внутри ResultSet-итерации
     private fun findCommentsByReviewIdSync(reviewId: Int): List<ReviewCommentResponse> {
         val stmt = connection.prepareStatement(
             """

@@ -3,7 +3,7 @@ info:
   title: ReelTrack API
   description: |
     API для трекера фильмов и сериалов ReelTrack.
-    
+
     **Роли пользователей:**
     - `USER` — обычный пользователь
     - `MODERATOR` — может банить пользователей, редактировать/удалять чужие отзывы и комментарии
@@ -22,6 +22,7 @@ components:
       bearerFormat: JWT
 
   schemas:
+
     # ─── USERS ───────────────────────────────────────────────────────────
     UserRole:
       type: string
@@ -30,42 +31,40 @@ components:
     UserResponse:
       type: object
       properties:
-        id:          { type: integer }
-        username:    { type: string }
-        email:       { type: string, format: email }
-        role:        { $ref: '#/components/schemas/UserRole' }
-        createdAt:   { type: string, format: date-time }
-        updatedAt:   { type: string, format: date-time }
-        isBanned:    { type: boolean }
+        id:        { type: integer }
+        username:  { type: string }
+        email:     { type: string, format: email }
+        role:      { $ref: '#/components/schemas/UserRole' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+        isBanned:  { type: boolean }
 
     CreateUserRequest:
       type: object
-      required: [username, email]
+      required: [username, email, password]
       properties:
-        username:     { type: string }
-        email:        { type: string, format: email }
-        password:     { type: string, format: password }
-        passwordHash: { type: string }
-        role:         { $ref: '#/components/schemas/UserRole' }
+        username: { type: string, example: johndoe }
+        email:    { type: string, format: email, example: john@example.com }
+        password: { type: string, format: password, example: "secret123" }
+        role:     { $ref: '#/components/schemas/UserRole' }
 
     UpdateUserRequest:
       type: object
       required: [username, email, role]
       properties:
-        username:     { type: string }
-        email:        { type: string, format: email }
-        password:     { type: string, format: password }
-        passwordHash: { type: string }
-        role:         { $ref: '#/components/schemas/UserRole' }
-        isBanned:     { type: boolean, default: false }
+        username: { type: string }
+        email:    { type: string, format: email }
+        password: { type: string, format: password, description: "Leave empty to keep current password" }
+        role:     { $ref: '#/components/schemas/UserRole' }
+        isBanned: { type: boolean, default: false }
 
     # ─── AUTH ────────────────────────────────────────────────────────────
     LoginRequest:
       type: object
       required: [email, password]
       properties:
-        email:    { type: string, format: email }
-        password: { type: string, format: password }
+        email:    { type: string, format: email, example: john@example.com }
+        password: { type: string, format: password, example: "secret123" }
 
     LoginResponse:
       type: object
@@ -93,84 +92,133 @@ components:
       type: object
       properties:
         id:   { type: integer }
-        name: { type: string }
+        name: { type: string, example: Action }
 
     CreateGenreRequest:
       type: object
       required: [name]
       properties:
-        name: { type: string }
+        name: { type: string, example: Action }
 
     UpdateGenreRequest:
       type: object
       required: [name]
       properties:
-        name: { type: string }
+        name: { type: string, example: Action }
 
     # ─── PERSONS ─────────────────────────────────────────────────────────
     Person:
       type: object
       properties:
         id:        { type: integer }
-        fullName:  { type: string }
-        birthDate: { type: string, format: date, nullable: true }
-        photoUrl:  { type: string, nullable: true }
+        fullName:  { type: string, example: "Christopher Nolan" }
+        birthDate: { type: string, format: date, nullable: true, example: "1970-07-26" }
+        photoUrl:  { type: string, nullable: true, example: "https://example.com/photo.jpg" }
 
     CreatePersonRequest:
       type: object
       required: [fullName]
       properties:
-        fullName:  { type: string }
-        birthDate: { type: string, format: date, nullable: true }
-        photoUrl:  { type: string, nullable: true }
+        fullName:
+          type: string
+          example: "Christopher Nolan"
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+          example: "1970-07-26"
+          description: "Optional. Format: YYYY-MM-DD"
+        photoUrl:
+          type: string
+          nullable: true
+          example: "https://example.com/photo.jpg"
+          description: "Optional. URL to person photo"
 
     UpdatePersonRequest:
       type: object
       required: [fullName]
       properties:
-        fullName:  { type: string }
-        birthDate: { type: string, format: date, nullable: true }
-        photoUrl:  { type: string, nullable: true }
+        fullName:
+          type: string
+          example: "Christopher Nolan"
+        birthDate:
+          type: string
+          format: date
+          nullable: true
+          example: "1970-07-26"
+          description: "Send null to clear the field"
+        photoUrl:
+          type: string
+          nullable: true
+          example: "https://example.com/photo.jpg"
+          description: "Send null to clear the field"
 
-    # ─── CONTENT ─────────────────────────────────────────────────────────
+    # ─── CONTENT — ВСПОМОГАТЕЛЬНЫЕ СХЕМЫ ────────────────────────────────
     ContentType:
       type: string
       enum: [MOVIE, SERIES]
 
-    AltTitle:
+    # В ответах — полная информация с id, contentId, personName
+    CastEntryResponse:
       type: object
       properties:
-        id:        { type: integer, nullable: true }
-        contentId: { type: integer, nullable: true }
-        title:     { type: string }
-        language:  { type: string, nullable: true }
+        id:         { type: integer }
+        contentId:  { type: integer }
+        personId:   { type: integer }
+        personName: { type: string, example: "Leonardo DiCaprio" }
+        character:  { type: string, nullable: true, example: "Dom Cobb" }
+        sortOrder:  { type: integer, default: 0 }
 
-    CastEntry:
+    # В запросах — только нужные поля
+    CastEntryInput:
       type: object
       required: [personId]
       properties:
-        id:         { type: integer, nullable: true }
-        contentId:  { type: integer, nullable: true }
-        personId:   { type: integer }
-        personName: { type: string, nullable: true }
-        character:  { type: string, nullable: true }
-        sortOrder:  { type: integer, default: 0 }
+        personId:  { type: integer, example: 1, description: "ID of the person from /api/persons" }
+        character: { type: string, nullable: true, example: "Dom Cobb" }
+        sortOrder: { type: integer, default: 0, example: 1 }
 
-    StaffEntry:
+    # В ответах
+    StaffEntryResponse:
+      type: object
+      properties:
+        id:         { type: integer }
+        contentId:  { type: integer }
+        personId:   { type: integer }
+        personName: { type: string, example: "Christopher Nolan" }
+        role:       { type: string, example: "Director" }
+
+    # В запросах
+    StaffEntryInput:
       type: object
       required: [personId, role]
       properties:
-        id:         { type: integer, nullable: true }
-        contentId:  { type: integer, nullable: true }
-        personId:   { type: integer }
-        personName: { type: string, nullable: true }
-        role:       { type: string }
+        personId: { type: integer, example: 2, description: "ID of the person from /api/persons" }
+        role:     { type: string, example: "Director" }
 
+    # В ответах
+    AltTitleResponse:
+      type: object
+      properties:
+        id:        { type: integer }
+        contentId: { type: integer }
+        title:     { type: string, example: "Начало" }
+        language:  { type: string, nullable: true, example: "ru" }
+
+    # В запросах
+    AltTitleInput:
+      type: object
+      required: [title]
+      properties:
+        title:    { type: string, example: "Начало" }
+        language: { type: string, nullable: true, example: "ru" }
+
+    # ─── EPISODES ────────────────────────────────────────────────────────
     Episode:
       type: object
       properties:
-        id:            { type: integer, nullable: true }
-        seasonId:      { type: integer, nullable: true }
+        id:            { type: integer }
+        seasonId:      { type: integer }
         episodeNumber: { type: integer }
         title:         { type: string, nullable: true }
         releaseDate:   { type: string, format: date, nullable: true }
@@ -183,12 +231,12 @@ components:
       type: object
       required: [episodeNumber]
       properties:
-        episodeNumber: { type: integer }
-        title:         { type: string, nullable: true }
-        releaseDate:   { type: string, format: date, nullable: true }
-        director:      { type: string, nullable: true }
-        posterUrl:     { type: string, nullable: true }
-        durationMin:   { type: integer, nullable: true }
+        episodeNumber: { type: integer, example: 1 }
+        title:         { type: string, nullable: true, example: "Pilot" }
+        releaseDate:   { type: string, format: date, nullable: true, example: "2008-01-20" }
+        director:      { type: string, nullable: true, example: "Vince Gilligan" }
+        posterUrl:     { type: string, nullable: true, example: "https://example.com/ep1.jpg" }
+        durationMin:   { type: integer, nullable: true, example: 58 }
         description:   { type: string, nullable: true }
 
     UpdateEpisodeRequest:
@@ -203,11 +251,12 @@ components:
         durationMin:   { type: integer, nullable: true }
         description:   { type: string, nullable: true }
 
+    # ─── SEASONS ─────────────────────────────────────────────────────────
     Season:
       type: object
       properties:
-        id:           { type: integer, nullable: true }
-        contentId:    { type: integer, nullable: true }
+        id:           { type: integer }
+        contentId:    { type: integer }
         seasonNumber: { type: integer }
         title:        { type: string, nullable: true }
         releaseDate:  { type: string, format: date, nullable: true }
@@ -220,9 +269,9 @@ components:
       type: object
       required: [seasonNumber]
       properties:
-        seasonNumber: { type: integer }
-        title:        { type: string, nullable: true }
-        releaseDate:  { type: string, format: date, nullable: true }
+        seasonNumber: { type: integer, example: 1 }
+        title:        { type: string, nullable: true, example: "Season 1" }
+        releaseDate:  { type: string, format: date, nullable: true, example: "2008-01-20" }
         description:  { type: string, nullable: true }
 
     UpdateSeasonRequest:
@@ -234,6 +283,7 @@ components:
         releaseDate:  { type: string, format: date, nullable: true }
         description:  { type: string, nullable: true }
 
+    # ─── CONTENT ─────────────────────────────────────────────────────────
     ContentListItem:
       type: object
       properties:
@@ -248,6 +298,7 @@ components:
           type: array
           items: { $ref: '#/components/schemas/Genre' }
 
+    # director убран — режиссёр указывается через staff с role="Director"
     ContentDetailResponse:
       type: object
       properties:
@@ -255,7 +306,6 @@ components:
         type:        { $ref: '#/components/schemas/ContentType' }
         title:       { type: string }
         releaseDate: { type: string, format: date, nullable: true }
-        director:    { type: string, nullable: true }
         posterUrl:   { type: string, nullable: true }
         bannerUrl:   { type: string, nullable: true }
         durationMin: { type: integer, nullable: true }
@@ -269,49 +319,82 @@ components:
           items: { $ref: '#/components/schemas/Genre' }
         altTitles:
           type: array
-          items: { $ref: '#/components/schemas/AltTitle' }
+          items: { $ref: '#/components/schemas/AltTitleResponse' }
         languages:
           type: array
           items: { type: string }
         cast:
           type: array
-          items: { $ref: '#/components/schemas/CastEntry' }
+          items: { $ref: '#/components/schemas/CastEntryResponse' }
         staff:
           type: array
-          items: { $ref: '#/components/schemas/StaffEntry' }
+          items: { $ref: '#/components/schemas/StaffEntryResponse' }
+          description: "Includes director (role='Director'), writer, producer, etc."
         seasons:
           type: array
           items: { $ref: '#/components/schemas/Season' }
           description: "Only populated for SERIES"
 
+    # director убран — передаётся через staff с role="Director"
     CreateContentRequest:
       type: object
       required: [type, title]
       properties:
-        type:        { $ref: '#/components/schemas/ContentType' }
-        title:       { type: string }
-        releaseDate: { type: string, format: date, nullable: true }
-        director:    { type: string, nullable: true }
-        posterUrl:   { type: string, nullable: true }
-        bannerUrl:   { type: string, nullable: true }
-        durationMin: { type: integer, nullable: true }
-        description: { type: string, nullable: true }
-        country:     { type: string, nullable: true }
+        type:
+          $ref: '#/components/schemas/ContentType'
+        title:
+          type: string
+          example: "Inception"
+        releaseDate:
+          type: string
+          format: date
+          nullable: true
+          example: "2010-07-16"
+        posterUrl:
+          type: string
+          nullable: true
+          example: "https://example.com/inception_poster.jpg"
+          description: "URL to poster image"
+        bannerUrl:
+          type: string
+          nullable: true
+          example: "https://example.com/inception_banner.jpg"
+          description: "URL to banner/backdrop image"
+        durationMin:
+          type: integer
+          nullable: true
+          example: 148
+          description: "Duration in minutes (for movies)"
+        description:
+          type: string
+          nullable: true
+          example: "A thief who steals corporate secrets through dream-sharing technology..."
+        country:
+          type: string
+          nullable: true
+          example: "USA"
         genreIds:
           type: array
           items: { type: integer }
+          example: [1, 2]
+          description: "IDs of existing genres from /api/genres"
         altTitles:
           type: array
-          items: { $ref: '#/components/schemas/AltTitle' }
+          items: { $ref: '#/components/schemas/AltTitleInput' }
+          description: "Alternative titles in other languages"
         languages:
           type: array
           items: { type: string }
+          example: ["en", "ru"]
+          description: "Available audio/subtitle languages"
         cast:
           type: array
-          items: { $ref: '#/components/schemas/CastEntry' }
+          items: { $ref: '#/components/schemas/CastEntryInput' }
+          description: "Actors. personId must exist in /api/persons"
         staff:
           type: array
-          items: { $ref: '#/components/schemas/StaffEntry' }
+          items: { $ref: '#/components/schemas/StaffEntryInput' }
+          description: "Crew members. Use role='Director' for director. personId must exist in /api/persons"
 
     UpdateContentRequest:
       type: object
@@ -320,9 +403,16 @@ components:
         type:        { $ref: '#/components/schemas/ContentType' }
         title:       { type: string }
         releaseDate: { type: string, format: date, nullable: true }
-        director:    { type: string, nullable: true }
-        posterUrl:   { type: string, nullable: true }
-        bannerUrl:   { type: string, nullable: true }
+        posterUrl:
+          type: string
+          nullable: true
+          example: "https://example.com/inception_poster.jpg"
+          description: "URL to poster image"
+        bannerUrl:
+          type: string
+          nullable: true
+          example: "https://example.com/inception_banner.jpg"
+          description: "URL to banner/backdrop image"
         durationMin: { type: integer, nullable: true }
         description: { type: string, nullable: true }
         country:     { type: string, nullable: true }
@@ -331,16 +421,17 @@ components:
           items: { type: integer }
         altTitles:
           type: array
-          items: { $ref: '#/components/schemas/AltTitle' }
+          items: { $ref: '#/components/schemas/AltTitleInput' }
         languages:
           type: array
           items: { type: string }
         cast:
           type: array
-          items: { $ref: '#/components/schemas/CastEntry' }
+          items: { $ref: '#/components/schemas/CastEntryInput' }
         staff:
           type: array
-          items: { $ref: '#/components/schemas/StaffEntry' }
+          items: { $ref: '#/components/schemas/StaffEntryInput' }
+          description: "Use role='Director' for director"
 
     # ─── REVIEWS ─────────────────────────────────────────────────────────
     ReviewLike:
@@ -365,13 +456,13 @@ components:
     ReviewResponse:
       type: object
       properties:
-        id:        { type: integer }
-        userId:    { type: integer }
-        username:  { type: string }
-        contentId: { type: integer }
-        rating:    { type: integer, minimum: 1, maximum: 10, nullable: true }
-        body:      { type: string, nullable: true }
-        isSpoiler: { type: boolean }
+        id:         { type: integer }
+        userId:     { type: integer }
+        username:   { type: string }
+        contentId:  { type: integer }
+        rating:     { type: integer, minimum: 1, maximum: 10, nullable: true }
+        body:       { type: string, nullable: true }
+        isSpoiler:  { type: boolean }
         likesCount: { type: integer }
         likes:
           type: array
@@ -386,8 +477,8 @@ components:
       type: object
       description: "At least one of rating or body must be provided"
       properties:
-        rating:    { type: integer, minimum: 1, maximum: 10, nullable: true }
-        body:      { type: string, nullable: true }
+        rating:    { type: integer, minimum: 1, maximum: 10, nullable: true, example: 8 }
+        body:      { type: string, nullable: true, example: "Great movie!" }
         isSpoiler: { type: boolean, default: false }
 
     UpdateReviewRequest:
@@ -402,7 +493,7 @@ components:
       type: object
       required: [body]
       properties:
-        body:     { type: string }
+        body:     { type: string, example: "I agree with this review!" }
         parentId: { type: integer, nullable: true, description: "Parent comment ID for nested replies" }
 
     UpdateCommentRequest:
@@ -556,7 +647,7 @@ paths:
   /api/auth/logout-all:
     post:
       tags: [Auth]
-      summary: Logout from all devices — revoke all tokens
+      summary: Logout from all devices
       security:
         - bearerAuth: []
       responses:
@@ -665,7 +756,7 @@ paths:
     put:
       tags: [Users]
       summary: Update user (own profile or ADMIN)
-      description: Regular users cannot change role or isBanned; only ADMINs can.
+      description: Regular users cannot change role or isBanned — only ADMINs can.
       security:
         - bearerAuth: []
       parameters:
@@ -955,6 +1046,10 @@ paths:
         content:
           application/json:
             schema: { $ref: '#/components/schemas/CreatePersonRequest' }
+            example:
+              fullName: "Christopher Nolan"
+              birthDate: "1970-07-26"
+              photoUrl: "https://example.com/nolan.jpg"
       responses:
         '201':
           description: Person created
@@ -990,6 +1085,9 @@ paths:
     put:
       tags: [Persons]
       summary: Update person (ADMIN only)
+      description: |
+        Full replace — send all fields you want to keep.
+        Fields set to null will be cleared in the database.
       security:
         - bearerAuth: []
       parameters:
@@ -1002,6 +1100,10 @@ paths:
         content:
           application/json:
             schema: { $ref: '#/components/schemas/UpdatePersonRequest' }
+            example:
+              fullName: "Christopher Nolan"
+              birthDate: "1970-07-26"
+              photoUrl: "https://example.com/nolan.jpg"
       responses:
         '200':
           description: Person updated
@@ -1054,6 +1156,7 @@ paths:
           in: query
           required: false
           schema: { $ref: '#/components/schemas/ContentType' }
+          description: Filter by content type
         - name: search
           in: query
           required: false
@@ -1063,6 +1166,7 @@ paths:
           in: query
           required: false
           schema: { type: integer }
+          description: Filter by genre ID
       responses:
         '200':
           description: List of content
@@ -1079,6 +1183,8 @@ paths:
     post:
       tags: [Content]
       summary: Create content (ADMIN only)
+      description: |
+        Director is specified via `staff` array with `role: "Director"`, not as a separate field.
       security:
         - bearerAuth: []
       requestBody:
@@ -1086,6 +1192,29 @@ paths:
         content:
           application/json:
             schema: { $ref: '#/components/schemas/CreateContentRequest' }
+            example:
+              type: MOVIE
+              title: "Inception"
+              releaseDate: "2010-07-16"
+              posterUrl: "https://example.com/inception_poster.jpg"
+              bannerUrl: "https://example.com/inception_banner.jpg"
+              durationMin: 148
+              description: "A thief who steals corporate secrets through dream-sharing technology..."
+              country: "USA"
+              genreIds: [1, 2]
+              altTitles:
+                - title: "Начало"
+                  language: "ru"
+              languages: ["en", "ru"]
+              cast:
+                - personId: 1
+                  character: "Dom Cobb"
+                  sortOrder: 1
+              staff:
+                - personId: 2
+                  role: "Director"
+                - personId: 3
+                  role: "Producer"
       responses:
         '201':
           description: Content created
@@ -1126,6 +1255,8 @@ paths:
     put:
       tags: [Content]
       summary: Update content (ADMIN only)
+      description: |
+        Director is specified via `staff` array with `role: "Director"`, not as a separate field.
       security:
         - bearerAuth: []
       parameters:
@@ -1508,7 +1639,7 @@ paths:
               schema: { $ref: '#/components/schemas/ErrorResponse' }
     post:
       tags: [Reviews]
-      summary: Create a review (authenticated users; one per content)
+      summary: Create a review (authenticated; one per content per user)
       security:
         - bearerAuth: []
       parameters:
@@ -1624,7 +1755,7 @@ paths:
   /api/reviews/{id}/like:
     post:
       tags: [Reviews]
-      summary: Toggle like on a review (authenticated users)
+      summary: Toggle like on a review (authenticated)
       security:
         - bearerAuth: []
       parameters:
@@ -1686,7 +1817,7 @@ paths:
                 items: { $ref: '#/components/schemas/ReviewCommentResponse' }
     post:
       tags: [Comments]
-      summary: Add a comment to a review (authenticated users)
+      summary: Add a comment to a review (authenticated)
       security:
         - bearerAuth: []
       parameters:

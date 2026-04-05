@@ -124,7 +124,6 @@ data class Content(
     val title: String,
     @Serializable(with = LocalDateSerializer::class)
     val releaseDate: LocalDate? = null,
-    val director: String? = null,
     val posterUrl: String? = null,
     val bannerUrl: String? = null,
     val durationMin: Int? = null,
@@ -145,7 +144,6 @@ data class ContentDetailResponse(
     val title: String,
     @Serializable(with = LocalDateSerializer::class)
     val releaseDate: LocalDate? = null,
-    val director: String? = null,
     val posterUrl: String? = null,
     val bannerUrl: String? = null,
     val durationMin: Int? = null,
@@ -184,7 +182,6 @@ data class CreateContentRequest(
     val title: String,
     @Serializable(with = LocalDateSerializer::class)
     val releaseDate: LocalDate? = null,
-    val director: String? = null,
     val posterUrl: String? = null,
     val bannerUrl: String? = null,
     val durationMin: Int? = null,
@@ -203,7 +200,6 @@ data class UpdateContentRequest(
     val title: String,
     @Serializable(with = LocalDateSerializer::class)
     val releaseDate: LocalDate? = null,
-    val director: String? = null,
     val posterUrl: String? = null,
     val bannerUrl: String? = null,
     val durationMin: Int? = null,

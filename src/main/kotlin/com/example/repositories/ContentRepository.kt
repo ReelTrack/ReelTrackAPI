@@ -116,20 +116,19 @@ class ContentRepository(private val connection: Connection) {
     suspend fun create(content: Content): Int = withContext(Dispatchers.IO) {
         val stmt = connection.prepareStatement(
             """
-            INSERT INTO content (type, title, release_date, director, poster_url, banner_url,
+            INSERT INTO content (type, title, release_date, poster_url, banner_url,
                 duration_min, description, country)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
             """.trimIndent()
         )
         stmt.setString(1, content.type.name)
         stmt.setString(2, content.title)
         stmt.setDate(3, content.releaseDate?.let { Date.valueOf(it) })
-        stmt.setString(4, content.director)
-        stmt.setString(5, content.posterUrl)
-        stmt.setString(6, content.bannerUrl)
-        stmt.setObject(7, content.durationMin)
-        stmt.setString(8, content.description)
-        stmt.setString(9, content.country)
+        stmt.setString(4, content.posterUrl)
+        stmt.setString(5, content.bannerUrl)
+        stmt.setObject(6, content.durationMin)
+        stmt.setString(7, content.description)
+        stmt.setString(8, content.country)
         val rs = stmt.executeQuery()
         if (rs.next()) rs.getInt("id") else throw Exception("Failed to create content")
     }
@@ -188,7 +187,7 @@ class ContentRepository(private val connection: Connection) {
     suspend fun update(id: Int, content: Content) = withContext(Dispatchers.IO) {
         val stmt = connection.prepareStatement(
             """
-            UPDATE content SET type = ?, title = ?, release_date = ?, director = ?,
+            UPDATE content SET type = ?, title = ?, release_date = ?,
                 poster_url = ?, banner_url = ?, duration_min = ?, description = ?,
                 country = ?, updated_at = CURRENT_TIMESTAMP
             WHERE id = ?
@@ -197,41 +196,18 @@ class ContentRepository(private val connection: Connection) {
         stmt.setString(1, content.type.name)
         stmt.setString(2, content.title)
         stmt.setDate(3, content.releaseDate?.let { Date.valueOf(it) })
-        stmt.setString(4, content.director)
-        stmt.setString(5, content.posterUrl)
-        stmt.setString(6, content.bannerUrl)
-        stmt.setObject(7, content.durationMin)
-        stmt.setString(8, content.description)
-        stmt.setString(9, content.country)
-        stmt.setInt(10, id)
+        stmt.setString(4, content.posterUrl)
+        stmt.setString(5, content.bannerUrl)
+        stmt.setObject(6, content.durationMin)
+        stmt.setString(7, content.description)
+        stmt.setString(8, content.country)
+        stmt.setInt(9, id)
         stmt.executeUpdate()
     }
 
     suspend fun delete(id: Int) = withContext(Dispatchers.IO) {
         val stmt = connection.prepareStatement("DELETE FROM content WHERE id = ?")
         stmt.setInt(1, id)
-        stmt.executeUpdate()
-    }
-
-    // ============================================================
-    // AVG RATING — пересчёт после create/update/delete отзыва
-    // ============================================================
-
-    suspend fun recalcAvgRating(contentId: Int) = withContext(Dispatchers.IO) {
-        val stmt = connection.prepareStatement(
-            """
-            UPDATE content
-            SET avg_rating = COALESCE(
-                (SELECT ROUND(AVG(rating::numeric), 1) FROM reviews
-                 WHERE content_id = ? AND rating IS NOT NULL),
-                0.0
-            ),
-            updated_at = CURRENT_TIMESTAMP
-            WHERE id = ?
-            """.trimIndent()
-        )
-        stmt.setInt(1, contentId)
-        stmt.setInt(2, contentId)
         stmt.executeUpdate()
     }
 
@@ -556,7 +532,6 @@ class ContentRepository(private val connection: Connection) {
         type        = ContentType.valueOf(getString("type")),
         title       = getString("title"),
         releaseDate = getDate("release_date")?.toLocalDate(),
-        director    = getString("director"),
         posterUrl   = getString("poster_url"),
         bannerUrl   = getString("banner_url"),
         durationMin = getObject("duration_min") as? Int,

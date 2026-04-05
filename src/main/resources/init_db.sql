@@ -55,7 +55,6 @@ CREATE TABLE IF NOT EXISTS content (
     type         VARCHAR(10)  NOT NULL CHECK (type IN ('MOVIE', 'SERIES')),
     title        VARCHAR(500) NOT NULL,
     release_date DATE,
-    director     VARCHAR(255),
     poster_url   TEXT,
     banner_url   TEXT,
     duration_min INTEGER,
