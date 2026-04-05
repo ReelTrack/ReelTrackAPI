@@ -1,0 +1,1803 @@
+openapi: 3.0.3
+info:
+  title: ReelTrack API
+  description: |
+    API для трекера фильмов и сериалов ReelTrack.
+    
+    **Роли пользователей:**
+    - `USER` — обычный пользователь
+    - `MODERATOR` — может банить пользователей, редактировать/удалять чужие отзывы и комментарии
+    - `ADMIN` — полный доступ
+  version: 0.0.1
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    # ─── USERS ───────────────────────────────────────────────────────────
+    UserRole:
+      type: string
+      enum: [USER, ADMIN, MODERATOR]
+
+    UserResponse:
+      type: object
+      properties:
+        id:          { type: integer }
+        username:    { type: string }
+        email:       { type: string, format: email }
+        role:        { $ref: '#/components/schemas/UserRole' }
+        createdAt:   { type: string, format: date-time }
+        updatedAt:   { type: string, format: date-time }
+        isBanned:    { type: boolean }
+
+    CreateUserRequest:
+      type: object
+      required: [username, email]
+      properties:
+        username:     { type: string }
+        email:        { type: string, format: email }
+        password:     { type: string, format: password }
+        passwordHash: { type: string }
+        role:         { $ref: '#/components/schemas/UserRole' }
+
+    UpdateUserRequest:
+      type: object
+      required: [username, email, role]
+      properties:
+        username:     { type: string }
+        email:        { type: string, format: email }
+        password:     { type: string, format: password }
+        passwordHash: { type: string }
+        role:         { $ref: '#/components/schemas/UserRole' }
+        isBanned:     { type: boolean, default: false }
+
+    # ─── AUTH ────────────────────────────────────────────────────────────
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email:    { type: string, format: email }
+        password: { type: string, format: password }
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:  { type: string }
+        refreshToken: { type: string }
+        expiresIn:    { type: integer, description: "Seconds until access token expires" }
+        user:         { $ref: '#/components/schemas/UserResponse' }
+
+    RefreshTokenRequest:
+      type: object
+      required: [refreshToken]
+      properties:
+        refreshToken: { type: string }
+
+    TokenResponse:
+      type: object
+      properties:
+        accessToken:  { type: string }
+        refreshToken: { type: string }
+        expiresIn:    { type: integer }
+
+    # ─── GENRES ──────────────────────────────────────────────────────────
+    Genre:
+      type: object
+      properties:
+        id:   { type: integer }
+        name: { type: string }
+
+    CreateGenreRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
+    UpdateGenreRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
+    # ─── PERSONS ─────────────────────────────────────────────────────────
+    Person:
+      type: object
+      properties:
+        id:        { type: integer }
+        fullName:  { type: string }
+        birthDate: { type: string, format: date, nullable: true }
+        photoUrl:  { type: string, nullable: true }
+
+    CreatePersonRequest:
+      type: object
+      required: [fullName]
+      properties:
+        fullName:  { type: string }
+        birthDate: { type: string, format: date, nullable: true }
+        photoUrl:  { type: string, nullable: true }
+
+    UpdatePersonRequest:
+      type: object
+      required: [fullName]
+      properties:
+        fullName:  { type: string }
+        birthDate: { type: string, format: date, nullable: true }
+        photoUrl:  { type: string, nullable: true }
+
+    # ─── CONTENT ─────────────────────────────────────────────────────────
+    ContentType:
+      type: string
+      enum: [MOVIE, SERIES]
+
+    AltTitle:
+      type: object
+      properties:
+        id:        { type: integer, nullable: true }
+        contentId: { type: integer, nullable: true }
+        title:     { type: string }
+        language:  { type: string, nullable: true }
+
+    CastEntry:
+      type: object
+      required: [personId]
+      properties:
+        id:         { type: integer, nullable: true }
+        contentId:  { type: integer, nullable: true }
+        personId:   { type: integer }
+        personName: { type: string, nullable: true }
+        character:  { type: string, nullable: true }
+        sortOrder:  { type: integer, default: 0 }
+
+    StaffEntry:
+      type: object
+      required: [personId, role]
+      properties:
+        id:         { type: integer, nullable: true }
+        contentId:  { type: integer, nullable: true }
+        personId:   { type: integer }
+        personName: { type: string, nullable: true }
+        role:       { type: string }
+
+    Episode:
+      type: object
+      properties:
+        id:            { type: integer, nullable: true }
+        seasonId:      { type: integer, nullable: true }
+        episodeNumber: { type: integer }
+        title:         { type: string, nullable: true }
+        releaseDate:   { type: string, format: date, nullable: true }
+        director:      { type: string, nullable: true }
+        posterUrl:     { type: string, nullable: true }
+        durationMin:   { type: integer, nullable: true }
+        description:   { type: string, nullable: true }
+
+    CreateEpisodeRequest:
+      type: object
+      required: [episodeNumber]
+      properties:
+        episodeNumber: { type: integer }
+        title:         { type: string, nullable: true }
+        releaseDate:   { type: string, format: date, nullable: true }
+        director:      { type: string, nullable: true }
+        posterUrl:     { type: string, nullable: true }
+        durationMin:   { type: integer, nullable: true }
+        description:   { type: string, nullable: true }
+
+    UpdateEpisodeRequest:
+      type: object
+      required: [episodeNumber]
+      properties:
+        episodeNumber: { type: integer }
+        title:         { type: string, nullable: true }
+        releaseDate:   { type: string, format: date, nullable: true }
+        director:      { type: string, nullable: true }
+        posterUrl:     { type: string, nullable: true }
+        durationMin:   { type: integer, nullable: true }
+        description:   { type: string, nullable: true }
+
+    Season:
+      type: object
+      properties:
+        id:           { type: integer, nullable: true }
+        contentId:    { type: integer, nullable: true }
+        seasonNumber: { type: integer }
+        title:        { type: string, nullable: true }
+        releaseDate:  { type: string, format: date, nullable: true }
+        description:  { type: string, nullable: true }
+        episodes:
+          type: array
+          items: { $ref: '#/components/schemas/Episode' }
+
+    CreateSeasonRequest:
+      type: object
+      required: [seasonNumber]
+      properties:
+        seasonNumber: { type: integer }
+        title:        { type: string, nullable: true }
+        releaseDate:  { type: string, format: date, nullable: true }
+        description:  { type: string, nullable: true }
+
+    UpdateSeasonRequest:
+      type: object
+      required: [seasonNumber]
+      properties:
+        seasonNumber: { type: integer }
+        title:        { type: string, nullable: true }
+        releaseDate:  { type: string, format: date, nullable: true }
+        description:  { type: string, nullable: true }
+
+    ContentListItem:
+      type: object
+      properties:
+        id:          { type: integer }
+        type:        { $ref: '#/components/schemas/ContentType' }
+        title:       { type: string }
+        releaseDate: { type: string, format: date, nullable: true }
+        posterUrl:   { type: string, nullable: true }
+        avgRating:   { type: number, format: double }
+        country:     { type: string, nullable: true }
+        genres:
+          type: array
+          items: { $ref: '#/components/schemas/Genre' }
+
+    ContentDetailResponse:
+      type: object
+      properties:
+        id:          { type: integer }
+        type:        { $ref: '#/components/schemas/ContentType' }
+        title:       { type: string }
+        releaseDate: { type: string, format: date, nullable: true }
+        director:    { type: string, nullable: true }
+        posterUrl:   { type: string, nullable: true }
+        bannerUrl:   { type: string, nullable: true }
+        durationMin: { type: integer, nullable: true }
+        description: { type: string, nullable: true }
+        avgRating:   { type: number, format: double }
+        country:     { type: string, nullable: true }
+        createdAt:   { type: string, format: date-time }
+        updatedAt:   { type: string, format: date-time }
+        genres:
+          type: array
+          items: { $ref: '#/components/schemas/Genre' }
+        altTitles:
+          type: array
+          items: { $ref: '#/components/schemas/AltTitle' }
+        languages:
+          type: array
+          items: { type: string }
+        cast:
+          type: array
+          items: { $ref: '#/components/schemas/CastEntry' }
+        staff:
+          type: array
+          items: { $ref: '#/components/schemas/StaffEntry' }
+        seasons:
+          type: array
+          items: { $ref: '#/components/schemas/Season' }
+          description: "Only populated for SERIES"
+
+    CreateContentRequest:
+      type: object
+      required: [type, title]
+      properties:
+        type:        { $ref: '#/components/schemas/ContentType' }
+        title:       { type: string }
+        releaseDate: { type: string, format: date, nullable: true }
+        director:    { type: string, nullable: true }
+        posterUrl:   { type: string, nullable: true }
+        bannerUrl:   { type: string, nullable: true }
+        durationMin: { type: integer, nullable: true }
+        description: { type: string, nullable: true }
+        country:     { type: string, nullable: true }
+        genreIds:
+          type: array
+          items: { type: integer }
+        altTitles:
+          type: array
+          items: { $ref: '#/components/schemas/AltTitle' }
+        languages:
+          type: array
+          items: { type: string }
+        cast:
+          type: array
+          items: { $ref: '#/components/schemas/CastEntry' }
+        staff:
+          type: array
+          items: { $ref: '#/components/schemas/StaffEntry' }
+
+    UpdateContentRequest:
+      type: object
+      required: [type, title]
+      properties:
+        type:        { $ref: '#/components/schemas/ContentType' }
+        title:       { type: string }
+        releaseDate: { type: string, format: date, nullable: true }
+        director:    { type: string, nullable: true }
+        posterUrl:   { type: string, nullable: true }
+        bannerUrl:   { type: string, nullable: true }
+        durationMin: { type: integer, nullable: true }
+        description: { type: string, nullable: true }
+        country:     { type: string, nullable: true }
+        genreIds:
+          type: array
+          items: { type: integer }
+        altTitles:
+          type: array
+          items: { $ref: '#/components/schemas/AltTitle' }
+        languages:
+          type: array
+          items: { type: string }
+        cast:
+          type: array
+          items: { $ref: '#/components/schemas/CastEntry' }
+        staff:
+          type: array
+          items: { $ref: '#/components/schemas/StaffEntry' }
+
+    # ─── REVIEWS ─────────────────────────────────────────────────────────
+    ReviewLike:
+      type: object
+      properties:
+        userId:    { type: integer }
+        username:  { type: string }
+        createdAt: { type: string, format: date-time }
+
+    ReviewCommentResponse:
+      type: object
+      properties:
+        id:        { type: integer }
+        reviewId:  { type: integer }
+        userId:    { type: integer }
+        username:  { type: string }
+        parentId:  { type: integer, nullable: true }
+        body:      { type: string }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    ReviewResponse:
+      type: object
+      properties:
+        id:        { type: integer }
+        userId:    { type: integer }
+        username:  { type: string }
+        contentId: { type: integer }
+        rating:    { type: integer, minimum: 1, maximum: 10, nullable: true }
+        body:      { type: string, nullable: true }
+        isSpoiler: { type: boolean }
+        likesCount: { type: integer }
+        likes:
+          type: array
+          items: { $ref: '#/components/schemas/ReviewLike' }
+        comments:
+          type: array
+          items: { $ref: '#/components/schemas/ReviewCommentResponse' }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time }
+
+    CreateReviewRequest:
+      type: object
+      description: "At least one of rating or body must be provided"
+      properties:
+        rating:    { type: integer, minimum: 1, maximum: 10, nullable: true }
+        body:      { type: string, nullable: true }
+        isSpoiler: { type: boolean, default: false }
+
+    UpdateReviewRequest:
+      type: object
+      description: "At least one of rating or body must be provided"
+      properties:
+        rating:    { type: integer, minimum: 1, maximum: 10, nullable: true }
+        body:      { type: string, nullable: true }
+        isSpoiler: { type: boolean, default: false }
+
+    CreateCommentRequest:
+      type: object
+      required: [body]
+      properties:
+        body:     { type: string }
+        parentId: { type: integer, nullable: true, description: "Parent comment ID for nested replies" }
+
+    UpdateCommentRequest:
+      type: object
+      required: [body]
+      properties:
+        body: { type: string }
+
+    LikeResponse:
+      type: object
+      properties:
+        liked:      { type: boolean }
+        likesCount: { type: integer }
+
+    # ─── COMMON ──────────────────────────────────────────────────────────
+    ApiResponse:
+      type: object
+      properties:
+        message: { type: string }
+        id:      { type: integer, nullable: true }
+
+    ErrorResponse:
+      type: object
+      properties:
+        error: { type: string }
+
+paths:
+
+  /:
+    get:
+      tags: [Health]
+      summary: Root ping
+      responses:
+        '200':
+          description: API is running
+          content:
+            text/plain:
+              schema: { type: string, example: "ReelTrack API is running!" }
+
+  /health:
+    get:
+      tags: [Health]
+      summary: Health check
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:   { type: string, example: UP }
+                  database: { type: string, example: connected }
+
+  /api/auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUserRequest' }
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Email already exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/auth/login:
+    post:
+      tags: [Auth]
+      summary: Login and obtain tokens
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Successful login
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: User is banned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/auth/refresh:
+    post:
+      tags: [Auth]
+      summary: Refresh access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RefreshTokenRequest' }
+      responses:
+        '200':
+          description: New tokens issued
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/TokenResponse' }
+        '401':
+          description: Invalid or expired refresh token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: User is banned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout — revoke current access token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '401':
+          description: No token provided
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/auth/logout-all:
+    post:
+      tags: [Auth]
+      summary: Logout from all devices — revoke all tokens
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logged out from all devices
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '401':
+          description: Invalid token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/auth/me:
+    get:
+      tags: [Auth]
+      summary: Get current authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current user info
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '401':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/users:
+    get:
+      tags: [Users]
+      summary: Get all users (ADMIN or MODERATOR only)
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/UserResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    post:
+      tags: [Users]
+      summary: Create a user (ADMIN only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateUserRequest' }
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/users/{id}:
+    get:
+      tags: [Users]
+      summary: Get user by ID (own profile or ADMIN/MODERATOR)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: User found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    put:
+      tags: [Users]
+      summary: Update user (own profile or ADMIN)
+      description: Regular users cannot change role or isBanned; only ADMINs can.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateUserRequest' }
+      responses:
+        '200':
+          description: User updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Users]
+      summary: Delete user (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: User deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/users/{id}/ban:
+    post:
+      tags: [Users]
+      summary: Ban a user (ADMIN or MODERATOR)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: User banned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/users/{id}/unban:
+    post:
+      tags: [Users]
+      summary: Unban a user (ADMIN or MODERATOR)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: User unbanned
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/users/{userId}/reviews:
+    get:
+      tags: [Reviews]
+      summary: Get all reviews by a specific user (public)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ReviewResponse' }
+        '400':
+          description: Invalid user ID
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/genres:
+    get:
+      tags: [Genres]
+      summary: Get all genres (public)
+      responses:
+        '200':
+          description: List of genres
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Genre' }
+    post:
+      tags: [Genres]
+      summary: Create a genre (ADMIN only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateGenreRequest' }
+      responses:
+        '201':
+          description: Genre created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Genre already exists
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/genres/{id}:
+    get:
+      tags: [Genres]
+      summary: Get genre by ID (public)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Genre found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Genre' }
+        '404':
+          description: Genre not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    put:
+      tags: [Genres]
+      summary: Update genre (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateGenreRequest' }
+      responses:
+        '200':
+          description: Genre updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Genre not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Name already taken
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Genres]
+      summary: Delete genre (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Genre deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Genre not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/persons:
+    get:
+      tags: [Persons]
+      summary: Get all persons (public)
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+          description: Filter by full name (case-insensitive substring match)
+      responses:
+        '200':
+          description: List of persons
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Person' }
+    post:
+      tags: [Persons]
+      summary: Create a person (ADMIN only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreatePersonRequest' }
+      responses:
+        '201':
+          description: Person created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/persons/{id}:
+    get:
+      tags: [Persons]
+      summary: Get person by ID (public)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Person found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Person' }
+        '404':
+          description: Person not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    put:
+      tags: [Persons]
+      summary: Update person (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdatePersonRequest' }
+      responses:
+        '200':
+          description: Person updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Person not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Persons]
+      summary: Delete person (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Person deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Person not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/content:
+    get:
+      tags: [Content]
+      summary: Get all content (public)
+      parameters:
+        - name: type
+          in: query
+          required: false
+          schema: { $ref: '#/components/schemas/ContentType' }
+        - name: search
+          in: query
+          required: false
+          schema: { type: string }
+          description: Filter by title (case-insensitive)
+        - name: genreId
+          in: query
+          required: false
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of content
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ContentListItem' }
+        '400':
+          description: Invalid type parameter
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    post:
+      tags: [Content]
+      summary: Create content (ADMIN only)
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateContentRequest' }
+      responses:
+        '201':
+          description: Content created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/content/{id}:
+    get:
+      tags: [Content]
+      summary: Get content by ID with full details (public)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Content detail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ContentDetailResponse' }
+        '404':
+          description: Content not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    put:
+      tags: [Content]
+      summary: Update content (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateContentRequest' }
+      responses:
+        '200':
+          description: Content updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Content not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Content]
+      summary: Delete content (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Content deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Content not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/content/{contentId}/seasons:
+    get:
+      tags: [Seasons]
+      summary: Get all seasons for a series (public)
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of seasons
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Season' }
+        '400':
+          description: Not a SERIES or invalid ID
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Content not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    post:
+      tags: [Seasons]
+      summary: Add a season (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateSeasonRequest' }
+      responses:
+        '201':
+          description: Season created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '400':
+          description: Not a SERIES or invalid request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Content not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/content/{contentId}/seasons/{seasonId}:
+    get:
+      tags: [Seasons]
+      summary: Get season by ID (public)
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: seasonId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Season found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Season' }
+        '404':
+          description: Season not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    put:
+      tags: [Seasons]
+      summary: Update season (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: seasonId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateSeasonRequest' }
+      responses:
+        '200':
+          description: Season updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Season not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Seasons]
+      summary: Delete season (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: seasonId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Season deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Season not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/content/{contentId}/seasons/{seasonId}/episodes:
+    post:
+      tags: [Episodes]
+      summary: Add an episode to a season (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: seasonId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateEpisodeRequest' }
+      responses:
+        '201':
+          description: Episode created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Season not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/content/{contentId}/seasons/{seasonId}/episodes/{episodeId}:
+    get:
+      tags: [Episodes]
+      summary: Get episode by ID (public)
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: seasonId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: episodeId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Episode found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Episode' }
+        '404':
+          description: Episode not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    put:
+      tags: [Episodes]
+      summary: Update episode (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: seasonId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: episodeId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateEpisodeRequest' }
+      responses:
+        '200':
+          description: Episode updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Episode not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Episodes]
+      summary: Delete episode (ADMIN only)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: seasonId
+          in: path
+          required: true
+          schema: { type: integer }
+        - name: episodeId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Episode deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Episode not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/content/{contentId}/reviews:
+    get:
+      tags: [Reviews]
+      summary: Get all reviews for a content item (public)
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of reviews
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ReviewResponse' }
+        '400':
+          description: Invalid content ID
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    post:
+      tags: [Reviews]
+      summary: Create a review (authenticated users; one per content)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: contentId
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateReviewRequest' }
+      responses:
+        '201':
+          description: Review created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '409':
+          description: Already reviewed
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/reviews/{id}:
+    get:
+      tags: [Reviews]
+      summary: Get review by ID (public)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Review found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ReviewResponse' }
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    put:
+      tags: [Reviews]
+      summary: Update review (own or ADMIN/MODERATOR)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateReviewRequest' }
+      responses:
+        '200':
+          description: Review updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Reviews]
+      summary: Delete review (own or ADMIN/MODERATOR)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Review deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/reviews/{id}/like:
+    post:
+      tags: [Reviews]
+      summary: Toggle like on a review (authenticated users)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Like toggled
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LikeResponse' }
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/reviews/{id}/likes:
+    get:
+      tags: [Reviews]
+      summary: Get list of likes for a review (public)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of likes
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ReviewLike' }
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/reviews/{id}/comments:
+    get:
+      tags: [Comments]
+      summary: Get all comments for a review (public)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: List of comments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/ReviewCommentResponse' }
+    post:
+      tags: [Comments]
+      summary: Add a comment to a review (authenticated users)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateCommentRequest' }
+      responses:
+        '201':
+          description: Comment created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Review not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+  /api/comments/{id}:
+    put:
+      tags: [Comments]
+      summary: Update a comment (own or ADMIN/MODERATOR)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/UpdateCommentRequest' }
+      responses:
+        '200':
+          description: Comment updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Comment not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+    delete:
+      tags: [Comments]
+      summary: Delete a comment (own or ADMIN/MODERATOR)
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: integer }
+      responses:
+        '200':
+          description: Comment deleted
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+        '403':
+          description: Access denied
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+        '404':
+          description: Comment not found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ErrorResponse' }
+
+tags:
+  - name: Health
+    description: Service health endpoints
+  - name: Auth
+    description: Registration, login, token management
+  - name: Users
+    description: User management
+  - name: Genres
+    description: Genre dictionary
+  - name: Persons
+    description: Actors and crew members
+  - name: Content
+    description: Movies and series
+  - name: Seasons
+    description: Series seasons
+  - name: Episodes
+    description: Season episodes
+  - name: Reviews
+    description: User reviews with ratings and likes
+  - name: Comments
+    description: Comments on reviews

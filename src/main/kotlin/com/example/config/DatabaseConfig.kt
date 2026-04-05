@@ -1,8 +1,16 @@
 package com.example.config
 
+import com.example.repositories.ContentRepository
+import com.example.repositories.GenreRepository
+import com.example.repositories.PersonRepository
+import com.example.repositories.ReviewRepository
 import com.example.repositories.TokenRepository
 import com.example.repositories.UserRepository
 import com.example.services.AuthService
+import com.example.services.ContentService
+import com.example.services.GenreService
+import com.example.services.PersonService
+import com.example.services.ReviewService
 import com.example.services.UserService
 import io.github.cdimascio.dotenv.dotenv
 import io.ktor.server.application.*
@@ -15,7 +23,7 @@ object DatabaseConfig {
     private val env = dotenv {
         directory = "./"
         filename = ".env"
-        ignoreIfMissing = false // если файл не найден - ошибка
+        ignoreIfMissing = false
     }
 
     private val dbUrl = env["DB_POSTGRES_URL"]
@@ -34,18 +42,39 @@ object DatabaseConfig {
             environment.log.info("✅ Database connected successfully!")
             environment.log.info("🗄️  Connected to: ${dbUrl.replaceAfter("@", "***")}")
 
-            val userRepository = UserRepository(connection)
+            // Repositories
+            val userRepository    = UserRepository(connection)
+            val tokenRepository   = TokenRepository(connection)
+            val genreRepository   = GenreRepository(connection)
+            val personRepository  = PersonRepository(connection)
+            val contentRepository = ContentRepository(connection)
+            // ReviewRepository получает ссылку на contentRepository для пересчёта avg_rating
+            val reviewRepository  = ReviewRepository(connection, contentRepository)
+
+            // Init tables (порядок важен — reviews зависит от users и content)
             userRepository.createTableIfNotExists()
-
-            val tokenRepository = TokenRepository(connection)
             tokenRepository.createTableIfNotExists()
+            genreRepository.createTableIfNotExists()
+            personRepository.createTableIfNotExists()
+            contentRepository.createTableIfNotExists()
+            reviewRepository.createTableIfNotExists()
 
-            val userService = UserService(userRepository)
-            val authService = AuthService(userRepository, tokenRepository)
+            // Services
+            val userService    = UserService(userRepository)
+            val authService    = AuthService(userRepository, tokenRepository)
+            val genreService   = GenreService(genreRepository)
+            val personService  = PersonService(personRepository)
+            val contentService = ContentService(contentRepository)
+            val reviewService  = ReviewService(reviewRepository)
 
-            attributes.put(ConnectionKey, connection)
-            attributes.put(UserServiceKey, userService)
-            attributes.put(AuthServiceKey, authService)
+            // Register in attributes
+            attributes.put(ConnectionKey,     connection)
+            attributes.put(UserServiceKey,    userService)
+            attributes.put(AuthServiceKey,    authService)
+            attributes.put(GenreServiceKey,   genreService)
+            attributes.put(PersonServiceKey,  personService)
+            attributes.put(ContentServiceKey, contentService)
+            attributes.put(ReviewServiceKey,  reviewService)
 
             environment.log.info("✅ All database tables initialized successfully!")
         } catch (e: Exception) {
@@ -54,7 +83,11 @@ object DatabaseConfig {
         }
     }
 
-    val ConnectionKey = AttributeKey<Connection>("db.connection")
-    val UserServiceKey = AttributeKey<UserService>("user.service")
-    val AuthServiceKey = AttributeKey<AuthService>("auth.service")
+    val ConnectionKey     = AttributeKey<Connection>("db.connection")
+    val UserServiceKey    = AttributeKey<UserService>("user.service")
+    val AuthServiceKey    = AttributeKey<AuthService>("auth.service")
+    val GenreServiceKey   = AttributeKey<GenreService>("genre.service")
+    val PersonServiceKey  = AttributeKey<PersonService>("person.service")
+    val ContentServiceKey = AttributeKey<ContentService>("content.service")
+    val ReviewServiceKey  = AttributeKey<ReviewService>("review.service")
 }

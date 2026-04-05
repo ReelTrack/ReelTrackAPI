@@ -36,4 +36,7 @@ dependencies {
     implementation("io.ktor:ktor-server-auth:3.4.0")
     implementation("io.ktor:ktor-server-auth-jwt:3.4.0")
 
+    // Swagger
+    implementation(libs.ktor.server.swagger)
+    implementation("io.ktor:ktor-server-cors:3.4.0")
 }

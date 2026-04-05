@@ -1,6 +1,7 @@
 package com.example
 
 import com.example.config.DatabaseConfig.initializeDatabase
+import com.example.config.configureCors
 import com.example.config.configureSerialization
 import com.example.config.configureRouting
 import com.example.plugins.configureAuthentication
@@ -13,6 +14,7 @@ fun main(args: Array<String>) {
 fun Application.module() {
     configureSerialization()
     configureAuthentication()
+    configureCors()
     initializeDatabase()
     configureRouting()
 }
