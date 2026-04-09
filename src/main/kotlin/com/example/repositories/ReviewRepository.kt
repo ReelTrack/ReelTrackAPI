@@ -4,6 +4,7 @@ import com.example.models.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.sql.Connection
+import java.sql.Statement
 
 class ReviewRepository(private val connection: Connection) {
 
@@ -56,15 +57,17 @@ class ReviewRepository(private val connection: Connection) {
         val stmt = connection.prepareStatement(
             """
             INSERT INTO reviews (user_id, content_id, rating, body, is_spoiler)
-            VALUES (?, ?, ?, ?, ?) RETURNING id
-            """.trimIndent()
+            VALUES (?, ?, ?, ?, ?)
+            """.trimIndent(),
+            Statement.RETURN_GENERATED_KEYS
         )
         stmt.setInt(1, review.userId)
         stmt.setInt(2, review.contentId)
         stmt.setObject(3, review.rating)
         stmt.setString(4, review.body)
         stmt.setBoolean(5, review.isSpoiler)
-        val rs = stmt.executeQuery()
+        stmt.executeUpdate()
+        val rs = stmt.generatedKeys
         if (rs.next()) rs.getInt("id") else throw Exception("Failed to create review")
     }
 
@@ -185,14 +188,16 @@ class ReviewRepository(private val connection: Connection) {
         val stmt = connection.prepareStatement(
             """
             INSERT INTO review_comments (review_id, user_id, parent_id, body)
-            VALUES (?, ?, ?, ?) RETURNING id
-            """.trimIndent()
+            VALUES (?, ?, ?, ?)
+            """.trimIndent(),
+            Statement.RETURN_GENERATED_KEYS
         )
         stmt.setInt(1, comment.reviewId)
         stmt.setInt(2, comment.userId)
         stmt.setObject(3, comment.parentId)
         stmt.setString(4, comment.body)
-        val rs = stmt.executeQuery()
+        stmt.executeUpdate()
+        val rs = stmt.generatedKeys
         if (rs.next()) rs.getInt("id") else throw Exception("Failed to create comment")
     }
 

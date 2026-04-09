@@ -49,7 +49,8 @@ fun Route.reviewRoutes() {
                     val id = reviewService.createReview(userId, contentId, request)
                     call.respond(HttpStatusCode.Created, ApiResponse("Review created successfully", id))
                 } catch (e: Exception) {
-                    val status = if (e.message?.contains("duplicate") == true || e.message?.contains("unique") == true)
+                    val msg = e.message?.lowercase().orEmpty()
+                    val status = if (msg.contains("duplicate") || msg.contains("unique"))
                         HttpStatusCode.Conflict else HttpStatusCode.BadRequest
                     call.respond(status, ErrorResponse(e.message ?: "Unknown error"))
                 }

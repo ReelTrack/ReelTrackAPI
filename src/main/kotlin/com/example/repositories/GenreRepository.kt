@@ -4,6 +4,7 @@ import com.example.models.Genre
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.sql.Connection
+import java.sql.Statement
 
 class GenreRepository(private val connection: Connection) {
 
@@ -20,10 +21,12 @@ class GenreRepository(private val connection: Connection) {
 
     suspend fun create(genre: Genre): Int = withContext(Dispatchers.IO) {
         val stmt = connection.prepareStatement(
-            "INSERT INTO genres (name) VALUES (?) RETURNING id"
+            "INSERT INTO genres (name) VALUES (?)",
+            Statement.RETURN_GENERATED_KEYS
         )
         stmt.setString(1, genre.name)
-        val rs = stmt.executeQuery()
+        stmt.executeUpdate()
+        val rs = stmt.generatedKeys
         if (rs.next()) rs.getInt("id")
         else throw Exception("Failed to create genre")
     }

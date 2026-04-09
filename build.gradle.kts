@@ -39,4 +39,24 @@ dependencies {
     // Swagger
     implementation(libs.ktor.server.swagger)
     implementation("io.ktor:ktor-server-cors:3.4.0")
+
+    // Testing
+    testImplementation(libs.ktor.server.test.host)
+    testImplementation(libs.kotlin.test.junit)
+    testImplementation("io.ktor:ktor-client-content-negotiation:3.4.0")
+    testImplementation("io.ktor:ktor-serialization-kotlinx-json:3.4.0")
+    testImplementation("com.h2database:h2:2.2.224")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+
+}
+
+tasks.test {
+    // Тесты не требуют реальной БД — используется H2 in-memory
+    // Поэтому никакие переменные окружения не нужны
+    environment("KTOR_ENV", "test")
+    useJUnit()
+    testLogging {
+        events("passed", "failed", "skipped")
+        showStandardStreams = false
+    }
 }
