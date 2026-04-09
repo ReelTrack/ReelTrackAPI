@@ -14,13 +14,13 @@ fun Application.configureAuthentication() {
     val env = dotenv {
         directory = "./"
         filename = ".env"
-        ignoreIfMissing = false
+        ignoreIfMissing = true
     }
 
-    val secret = env["JWT_SECRET"]
+    val secret = (System.getenv("JWT_SECRET") ?: env["JWT_SECRET"])
         ?: throw IllegalStateException("JWT_SECRET is not configured")
 
-    val issuer = env["JWT_ISSUER"] ?: "ReelTrackAPI"
+    val issuer = System.getenv("JWT_ISSUER") ?: env["JWT_ISSUER"] ?: "ReelTrackAPI"
 
     install(Authentication) {
         jwt("auth-jwt") {
