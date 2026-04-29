@@ -1,4 +1,4 @@
-package com.example
+package com.example.testsupport
 
 import com.example.repositories.*
 import com.example.services.*

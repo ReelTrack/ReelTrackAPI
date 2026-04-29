@@ -1,3 +1,6 @@
+import org.gradle.api.tasks.testing.logging.TestExceptionFormat
+import org.gradle.api.tasks.testing.logging.TestLogEvent
+
 plugins {
     alias(libs.plugins.kotlin.jvm)
     alias(libs.plugins.ktor)
@@ -39,6 +42,8 @@ dependencies {
     // Swagger
     implementation(libs.ktor.server.swagger)
     implementation("io.ktor:ktor-server-cors:3.4.0")
+    implementation("io.ktor:ktor-server-metrics-micrometer:3.4.0")
+    implementation("io.micrometer:micrometer-registry-prometheus:1.14.4")
 
     // Testing
     testImplementation(libs.ktor.server.test.host)
@@ -56,7 +61,16 @@ tasks.test {
     environment("KTOR_ENV", "test")
     useJUnit()
     testLogging {
-        events("passed", "failed", "skipped")
-        showStandardStreams = false
+        events(
+            TestLogEvent.STARTED,
+            TestLogEvent.PASSED,
+            TestLogEvent.FAILED,
+            TestLogEvent.SKIPPED,
+        )
+        showExceptions = true
+        showCauses = true
+        showStackTraces = true
+        exceptionFormat = TestExceptionFormat.FULL
+        showStandardStreams = true
     }
 }

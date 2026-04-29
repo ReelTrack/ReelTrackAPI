@@ -1,4 +1,7 @@
-package com.example
+package com.example.api.persons
+
+import com.example.testsupport.TestDatabase
+import com.example.testsupport.testModule
 
 import io.ktor.client.request.*
 import io.ktor.client.statement.*

@@ -106,7 +106,7 @@ fun Route.reviewRoutes() {
 
                 val request = call.receive<UpdateReviewRequest>()
                 try {
-                    reviewService.updateReview(id, request)
+                    reviewService.updateReview(id, existing.contentId, request)
                     call.respond(HttpStatusCode.OK, ApiResponse("Review updated successfully"))
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(e.message ?: "Unknown error"))
@@ -135,7 +135,7 @@ fun Route.reviewRoutes() {
                 }
 
                 try {
-                    reviewService.deleteReview(id)
+                    reviewService.deleteReview(id, existing.contentId)
                     call.respond(HttpStatusCode.OK, ApiResponse("Review deleted successfully"))
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(e.message ?: "Unknown error"))

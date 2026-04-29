@@ -23,7 +23,9 @@ class ReviewService(private val reviewRepository: ReviewRepository) {
             body      = request.body,
             isSpoiler = request.isSpoiler
         )
-        return reviewRepository.create(review)
+        val id = reviewRepository.create(review)
+        if (request.rating != null) reviewRepository.updateAvgRating(contentId)
+        return id
     }
 
     suspend fun getReviewById(id: Int): ReviewResponse? {
@@ -38,7 +40,7 @@ class ReviewService(private val reviewRepository: ReviewRepository) {
         return reviewRepository.findByUserId(userId)
     }
 
-    suspend fun updateReview(id: Int, request: UpdateReviewRequest) {
+    suspend fun updateReview(id: Int, contentId: Int, request: UpdateReviewRequest) {
         if (request.rating == null && request.body.isNullOrBlank()) {
             throw Exception("Review must have at least a rating or a body")
         }
@@ -53,10 +55,12 @@ class ReviewService(private val reviewRepository: ReviewRepository) {
             isSpoiler = request.isSpoiler
         )
         reviewRepository.update(id, review)
+        reviewRepository.updateAvgRating(contentId)
     }
 
-    suspend fun deleteReview(id: Int) {
+    suspend fun deleteReview(id: Int, contentId: Int) {
         reviewRepository.delete(id)
+        reviewRepository.updateAvgRating(contentId)
     }
 
     // ============================================================
