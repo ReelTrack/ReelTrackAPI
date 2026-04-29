@@ -118,8 +118,9 @@ class ContentRepository(private val connection: Connection) {
             """
             INSERT INTO content (type, title, release_date, poster_url, banner_url,
                 duration_min, description, country)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
-            """.trimIndent()
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """.trimIndent(),
+            Statement.RETURN_GENERATED_KEYS
         )
         stmt.setString(1, content.type.name)
         stmt.setString(2, content.title)
@@ -129,7 +130,8 @@ class ContentRepository(private val connection: Connection) {
         stmt.setObject(6, content.durationMin)
         stmt.setString(7, content.description)
         stmt.setString(8, content.country)
-        val rs = stmt.executeQuery()
+        stmt.executeUpdate()
+        val rs = stmt.generatedKeys
         if (rs.next()) rs.getInt("id") else throw Exception("Failed to create content")
     }
 
@@ -413,14 +415,16 @@ class ContentRepository(private val connection: Connection) {
 
     suspend fun createSeason(contentId: Int, season: Season): Int = withContext(Dispatchers.IO) {
         val stmt = connection.prepareStatement(
-            "INSERT INTO seasons (content_id, season_number, title, release_date, description) VALUES (?, ?, ?, ?, ?) RETURNING id"
+            "INSERT INTO seasons (content_id, season_number, title, release_date, description) VALUES (?, ?, ?, ?, ?)",
+            Statement.RETURN_GENERATED_KEYS
         )
         stmt.setInt(1, contentId)
         stmt.setInt(2, season.seasonNumber)
         stmt.setString(3, season.title)
         stmt.setDate(4, season.releaseDate?.let { Date.valueOf(it) })
         stmt.setString(5, season.description)
-        val rs = stmt.executeQuery()
+        stmt.executeUpdate()
+        val rs = stmt.generatedKeys
         if (rs.next()) rs.getInt("id") else throw Exception("Failed to create season")
     }
 
@@ -477,8 +481,9 @@ class ContentRepository(private val connection: Connection) {
         val stmt = connection.prepareStatement(
             """
             INSERT INTO episodes (season_id, episode_number, title, release_date, director, poster_url, duration_min, description)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?) RETURNING id
-            """.trimIndent()
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """.trimIndent(),
+            Statement.RETURN_GENERATED_KEYS
         )
         stmt.setInt(1, seasonId)
         stmt.setInt(2, episode.episodeNumber)
@@ -488,7 +493,8 @@ class ContentRepository(private val connection: Connection) {
         stmt.setString(6, episode.posterUrl)
         stmt.setObject(7, episode.durationMin)
         stmt.setString(8, episode.description)
-        val rs = stmt.executeQuery()
+        stmt.executeUpdate()
+        val rs = stmt.generatedKeys
         if (rs.next()) rs.getInt("id") else throw Exception("Failed to create episode")
     }
 

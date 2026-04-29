@@ -4,6 +4,7 @@ import com.example.models.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.sql.Connection
+import java.sql.Statement
 
 class ReviewRepository(private val connection: Connection) {
 
@@ -18,11 +19,16 @@ class ReviewRepository(private val connection: Connection) {
                 body       TEXT,
                 is_spoiler BOOLEAN  NOT NULL DEFAULT FALSE,
                 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE (user_id, content_id)
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
             )
             """.trimIndent()
         )
+        // Drop the old unique constraint if it exists (allows multiple reviews per user)
+        runCatching {
+            connection.createStatement().executeUpdate(
+                "ALTER TABLE reviews DROP CONSTRAINT IF EXISTS reviews_user_id_content_id_key"
+            )
+        }
         connection.createStatement().executeUpdate(
             """
             CREATE TABLE IF NOT EXISTS review_likes (
@@ -56,15 +62,17 @@ class ReviewRepository(private val connection: Connection) {
         val stmt = connection.prepareStatement(
             """
             INSERT INTO reviews (user_id, content_id, rating, body, is_spoiler)
-            VALUES (?, ?, ?, ?, ?) RETURNING id
-            """.trimIndent()
+            VALUES (?, ?, ?, ?, ?)
+            """.trimIndent(),
+            Statement.RETURN_GENERATED_KEYS
         )
         stmt.setInt(1, review.userId)
         stmt.setInt(2, review.contentId)
         stmt.setObject(3, review.rating)
         stmt.setString(4, review.body)
         stmt.setBoolean(5, review.isSpoiler)
-        val rs = stmt.executeQuery()
+        stmt.executeUpdate()
+        val rs = stmt.generatedKeys
         if (rs.next()) rs.getInt("id") else throw Exception("Failed to create review")
     }
 
@@ -116,6 +124,23 @@ class ReviewRepository(private val connection: Connection) {
     suspend fun delete(id: Int) = withContext(Dispatchers.IO) {
         connection.prepareStatement("DELETE FROM reviews WHERE id = ?")
             .also { it.setInt(1, id) }.executeUpdate()
+    }
+
+    suspend fun updateAvgRating(contentId: Int) = withContext(Dispatchers.IO) {
+        connection.prepareStatement(
+            """
+            UPDATE content
+            SET avg_rating = (
+                SELECT COALESCE(ROUND(AVG(rating::NUMERIC), 1), 0.0)
+                FROM reviews
+                WHERE content_id = ? AND rating IS NOT NULL
+            )
+            WHERE id = ?
+            """.trimIndent()
+        ).also {
+            it.setInt(1, contentId)
+            it.setInt(2, contentId)
+        }.executeUpdate()
     }
 
     // ============================================================
@@ -185,14 +210,16 @@ class ReviewRepository(private val connection: Connection) {
         val stmt = connection.prepareStatement(
             """
             INSERT INTO review_comments (review_id, user_id, parent_id, body)
-            VALUES (?, ?, ?, ?) RETURNING id
-            """.trimIndent()
+            VALUES (?, ?, ?, ?)
+            """.trimIndent(),
+            Statement.RETURN_GENERATED_KEYS
         )
         stmt.setInt(1, comment.reviewId)
         stmt.setInt(2, comment.userId)
         stmt.setObject(3, comment.parentId)
         stmt.setString(4, comment.body)
-        val rs = stmt.executeQuery()
+        stmt.executeUpdate()
+        val rs = stmt.generatedKeys
         if (rs.next()) rs.getInt("id") else throw Exception("Failed to create comment")
     }
 

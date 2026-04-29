@@ -49,7 +49,8 @@ fun Route.reviewRoutes() {
                     val id = reviewService.createReview(userId, contentId, request)
                     call.respond(HttpStatusCode.Created, ApiResponse("Review created successfully", id))
                 } catch (e: Exception) {
-                    val status = if (e.message?.contains("duplicate") == true || e.message?.contains("unique") == true)
+                    val msg = e.message?.lowercase().orEmpty()
+                    val status = if (msg.contains("duplicate") || msg.contains("unique"))
                         HttpStatusCode.Conflict else HttpStatusCode.BadRequest
                     call.respond(status, ErrorResponse(e.message ?: "Unknown error"))
                 }
@@ -105,7 +106,7 @@ fun Route.reviewRoutes() {
 
                 val request = call.receive<UpdateReviewRequest>()
                 try {
-                    reviewService.updateReview(id, request)
+                    reviewService.updateReview(id, existing.contentId, request)
                     call.respond(HttpStatusCode.OK, ApiResponse("Review updated successfully"))
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(e.message ?: "Unknown error"))
@@ -134,7 +135,7 @@ fun Route.reviewRoutes() {
                 }
 
                 try {
-                    reviewService.deleteReview(id)
+                    reviewService.deleteReview(id, existing.contentId)
                     call.respond(HttpStatusCode.OK, ApiResponse("Review deleted successfully"))
                 } catch (e: Exception) {
                     call.respond(HttpStatusCode.BadRequest, ErrorResponse(e.message ?: "Unknown error"))

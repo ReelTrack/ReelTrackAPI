@@ -138,8 +138,7 @@ CREATE TABLE IF NOT EXISTS reviews (
     body        TEXT,
     is_spoiler  BOOLEAN NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE (user_id, content_id)   -- один отзыв на контент от пользователя
+    updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- ============================================================

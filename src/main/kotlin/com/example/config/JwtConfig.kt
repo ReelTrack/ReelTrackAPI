@@ -13,13 +13,13 @@ object JwtConfig {
     private val env = dotenv {
         directory = "./"
         filename = ".env"
-        ignoreIfMissing = false
+        ignoreIfMissing = true
     }
 
-    private val secret = env["JWT_SECRET"]
+    private val secret = (System.getenv("JWT_SECRET") ?: env["JWT_SECRET"])
         ?: throw IllegalStateException("JWT_SECRET is not configured")
 
-    private val issuer = env["JWT_ISSUER"] ?: "ReelTrackAPI"
+    private val issuer = System.getenv("JWT_ISSUER") ?: env["JWT_ISSUER"] ?: "ReelTrackAPI"
 
     val accessTokenExpirationMinutes = 60L // 1 час
     val refreshTokenExpirationDays = 30L // 30 дней

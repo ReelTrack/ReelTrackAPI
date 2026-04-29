@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.sql.Connection
 import java.sql.Date
+import java.sql.Statement
 
 class PersonRepository(private val connection: Connection) {
 
@@ -24,12 +25,14 @@ class PersonRepository(private val connection: Connection) {
 
     suspend fun create(person: Person): Int = withContext(Dispatchers.IO) {
         val stmt = connection.prepareStatement(
-            "INSERT INTO persons (full_name, birth_date, photo_url) VALUES (?, ?, ?) RETURNING id"
+            "INSERT INTO persons (full_name, birth_date, photo_url) VALUES (?, ?, ?)",
+            Statement.RETURN_GENERATED_KEYS
         )
         stmt.setString(1, person.fullName)
         stmt.setDate(2, person.birthDate?.let { Date.valueOf(it) })
         stmt.setString(3, person.photoUrl)
-        val rs = stmt.executeQuery()
+        stmt.executeUpdate()
+        val rs = stmt.generatedKeys
         if (rs.next()) rs.getInt("id")
         else throw Exception("Failed to create person")
     }
